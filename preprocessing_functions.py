@@ -15,9 +15,14 @@ def calculate_snr_532nm(raman_shift, intensities):
     """
     signal_range = (2600, 3000)
     noise_range = (3000, 3400)
-    signal = intensities[(raman_shift >= signal_range[0]) & (raman_shift <= signal_range[1])].mean()
-    noise = intensities[(raman_shift >= noise_range[0]) & (raman_shift <= noise_range[1])].std()
-    return signal / noise if noise != 0 else float('inf')
+
+    signal_mask = (raman_shift >= signal_range[0]) & (raman_shift <= signal_range[1])
+    signal_mean = intensities[signal_mask].mean()
+
+    noise_mask = (raman_shift >= noise_range[0]) & (raman_shift <= noise_range[1])
+    noise_std = np.std(intensities[noise_mask])
+
+    return signal_mean / noise_std if noise_std > 0 else float('inf')
 
 def calculate_snr_785nm(raman_shift, intensities):
     """
@@ -33,21 +38,14 @@ def calculate_snr_785nm(raman_shift, intensities):
     """
     signal_range = (750, 1500)
     noise_ranges = [(600, 750), (1500, 1800)]
-    signal = intensities[(raman_shift >= signal_range[0]) & (raman_shift <= signal_range[1])].mean()
 
-    # Combine all noise ranges and calculate the standard deviation once
-    noise_data = []
-    for nr in noise_ranges:
-        mask = (raman_shift >= nr[0]) & (raman_shift <= nr[1])
-        noise_data.extend(intensities[mask])
-    
-    if not noise_data:  # Check if noise data is empty
-        return float('inf')  # Return infinity if no noise data
+    signal_mask = (raman_shift >= signal_range[0]) & (raman_shift <= signal_range[1])
+    signal_mean = intensities[signal_mask].mean()
 
-    noise_data = np.array(noise_data)  # Convert list to numpy array for operation
-    noise_std = np.std(noise_data)  # Standard deviation of combined noise data
+    noise_mask = np.any([(raman_shift >= nr[0]) & (raman_shift <= nr[1]) for nr in noise_ranges], axis=0)
+    noise_std = np.std(intensities[noise_mask])
 
-    return signal / noise_std if noise_std != 0 else float('inf')
+    return signal_mean / noise_std if noise_std > 0 else float('inf')
 
 
 def identify_outliers(group):
